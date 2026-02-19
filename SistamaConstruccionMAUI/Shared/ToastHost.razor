@@ -1,0 +1,50 @@
+@using SistamaConstruccionMAUI.Services
+
+@inject ToastService Toasts
+
+@if (_visible)
+{
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+        <div class="toast show">
+            <div class="toast-body @CssClass">
+                @_text
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _visible;
+    private string _text = "";
+    private string CssClass = "bg-light";
+
+    protected override void OnInitialized()
+    {
+        Toasts.OnShow += Show;
+    }
+
+    private async void Show(ToastMessage msg)
+    {
+        _text = msg.Text;
+
+        CssClass = msg.Type switch
+        {
+            ToastType.Success => "bg-success text-white",
+            ToastType.Error => "bg-danger text-white",
+            _ => "bg-secondary text-white"
+        };
+
+        _visible = true;
+        await InvokeAsync(StateHasChanged);
+
+        await Task.Delay(2500);
+
+        _visible = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Toasts.OnShow -= Show;
+    }
+}

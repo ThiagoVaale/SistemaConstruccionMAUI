@@ -1,0 +1,85 @@
+<EditForm Model="Model" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label class="form-label">Nombre</label>
+        <InputText class="form-control" @bind-Value="Model.Name" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Teléfono</label>
+        <InputText class="form-control" @bind-Value="Model.Telephone" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <InputText class="form-control" @bind-Value="Model.Email" />
+    </div>
+
+    <div class="form-check mb-2">
+        <InputCheckbox class="form-check-input" @bind-Value="Model.IncludesVATDefault" />
+        <label class="form-check-label">Incluye IVA (default)</label>
+    </div>
+
+    <div class="form-check mb-3">
+        <InputCheckbox class="form-check-input" @bind-Value="Model.FreightIncludedDefault" />
+        <label class="form-check-label">Flete incluido (default)</label>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Costo flete habitual</label>
+        <InputNumber class="form-control" @bind-Value="Model.UsualFreightCost" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Condiciones de pago</label>
+        <InputTextArea class="form-control" @bind-Value="Model.PaymentTermsText" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Observaciones</label>
+        <InputTextArea class="form-control" @bind-Value="Model.Observations" />
+    </div>
+
+    <button class="btn btn-primary" disabled="@IsBusy">
+        @(IsEdit ? "Guardar cambios" : "Crear proveedor")
+    </button>
+
+    @if (IsEdit)
+    {
+        <button type="button" class="btn btn-outline-secondary ms-2" disabled="@IsBusy" @onclick="OnCancel">
+            Cancelar
+        </button>
+    }
+</EditForm>
+
+@code {
+    [Parameter] public required ProveedorFormModel Model { get; set; }
+    [Parameter] public bool IsEdit { get; set; }
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public EventCallback OnSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private async Task HandleValidSubmit()
+    {
+        await OnSubmit.InvokeAsync();
+    }
+
+    public sealed class ProveedorFormModel
+    {
+        public Guid? Id { get; set; }
+
+        public string Name { get; set; } = "";
+        public string? Telephone { get; set; }
+        public string? Email { get; set; }
+
+        public int CheckSetDeadlineId { get; set; }
+        public bool IncludesVATDefault { get; set; }
+        public bool FreightIncludedDefault { get; set; }
+
+        public decimal? UsualFreightCost { get; set; }
+        public string? PaymentTermsText { get; set; }
+        public string? Observations { get; set; }
+    }
+}

@@ -1,0 +1,243 @@
+﻿@page "/proveedores"
+@using Application.SupplierModule.CreateSupplier
+@using Application.SupplierModule.DeleteSupplier
+@using Application.SupplierModule.GetAll
+@using Application.SupplierModule.UpdateSupplier
+@using SistamaConstruccionMAUI.Components.SupplierComponent
+@using SistamaConstruccionMAUI.Services
+
+@inject GetAllSupplierHandler GetAllHandler
+@inject CreateSupplierHandler CreateHandler
+@inject UpdateSupplierHandler UpdateSupplierHandler
+@inject DeleteSupplierHandler DeleteHandler
+@inject ToastService Toasts
+
+
+<h3>Proveedores</h3>
+
+@if (_isLoading)
+{
+    <p>Cargando...</p>
+}
+else if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else
+{
+    <div class="row">
+        <div class="col-5">
+            <div class="card p-3">
+                <h5>@(_isEdit ? "Editar proveedor" : "Nuevo proveedor")</h5>
+
+                <ProveedorForm Model="_form"
+                              IsEdit="_isEdit"
+                              IsBusy="_isBusy"
+                              OnSubmit="SaveAsync"
+                              OnCancel="CancelEdit" />
+            </div>
+        </div>
+
+        <div class="col-7">
+            <div class="card p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="m-0">Listado</h5>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="LoadAsync" disabled="@_isBusy">Refrescar</button>
+                </div>
+
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Teléfono</th>
+                            <th>Email</th>
+                            <th style="width: 160px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in _items)
+                        {
+                            <tr>
+                                <td>@p.Name</td>
+                                <td>@p.Telephone</td>
+                                <td>@p.Email</td>
+                                <td class="text-end">
+                                    <button class="btn btn-outline-primary btn-sm me-2" @onclick="() => StartEdit(p.Id)">Editar</button>
+                                    <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteAsync(p.Id)">Eliminar</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                @if (_items.Count == 0)
+                {
+                    <div class="text-muted">No hay proveedores cargados.</div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isLoading;
+    private bool _isBusy;
+    private string? _error;
+
+    private List<Application.SupplierModule.Dtos.SupplierDto> _items = new();
+
+    private bool _isEdit;
+    private SupplierForm.ProveedorFormModel _form = new();
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _error = null;
+
+        try
+        {
+            var resp = await GetAllHandler.Handle(new GetAllSuppliersQuery());
+            _items = resp.Items.ToList();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void StartEdit(Guid id)
+    {
+        var p = _items.First(x => x.Id == id);
+
+        _isEdit = true;
+        _form = new SupplierForm.ProveedorFormModel
+        {
+            Id = p.Id,
+            Name = p.Name,
+            Telephone = p.Telephone,
+            Email = p.Email,
+            CheckSetDeadlineId = p.CheckSetDeadlineId,
+            IncludesVATDefault = p.IncludesVATDefault,
+            FreightIncludedDefault = p.FreightIncludedDefault,
+            UsualFreightCost = p.UsualFreightCost,
+            PaymentTermsText = p.PaymentTermsText,
+            Observations = p.Observations
+        };
+    }
+
+    private void CancelEdit()
+    {
+        _isEdit = false;
+        _form = new SupplierForm.ProveedorFormModel();
+    }
+
+    private async Task SaveAsync()
+    {
+        _isBusy = true;
+        _error = null;
+
+        try
+        {
+            if (!_isEdit)
+            {
+                var createReq = new CreateSupplierRequest
+                    {
+                        Name = _form.Name,
+                        Telephone = _form.Telephone,
+                        Email = _form.Email,
+                        CheckSetDeadlineId = _form.CheckSetDeadlineId,
+                        IncludesVATDefault = _form.IncludesVATDefault,
+                        FreightIncludedDefault = _form.FreightIncludedDefault,
+                        UsualFreightCost = _form.UsualFreightCost,
+                        PaymentTermsText = _form.PaymentTermsText,
+                        Observations = _form.Observations
+                    };
+
+                var createResp = await CreateHandler.Handle(createReq);
+
+                if (!createResp.Success)
+                {
+                    Toasts.Error(createResp.Error ?? "No se pudo crear el proveedor.");
+                    return;
+                }
+
+                Toasts.Success("Proveedor creado.");
+                _form = new SupplierForm.ProveedorFormModel();
+                await LoadAsync();
+                return;
+            }
+
+            
+            var updateReq = new UpdateSupplierRequest(
+                _form.Id!.Value,
+                _form.Name,
+                _form.Telephone,
+                _form.Email,
+                _form.CheckSetDeadlineId,
+                _form.IncludesVATDefault,
+                _form.FreightIncludedDefault,
+                _form.UsualFreightCost,
+                _form.PaymentTermsText,
+                _form.Observations
+            );
+
+            var updateResp = await UpdateSupplierHandler.Handle(updateReq);
+
+            if (!updateResp.Success)
+            {
+                Toasts.Error(updateResp.Error ?? "Error al actualizar.");
+                return;
+            }
+
+            Toasts.Success("Proveedor actualizado.");
+            CancelEdit();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Toasts.Error(ex.Message);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+
+    private async Task DeleteAsync(Guid id)
+    {
+        _isBusy = true;
+
+        try
+        {
+            var resp = await DeleteHandler.Handle(new DeleteSupplierRequest(id));
+            if (!resp.Success)
+            {
+                Toasts.Error(resp.Error ?? "No se pudo eliminar.");
+                return;
+            }
+
+            Toasts.Success("Proveedor eliminado.");
+            await LoadAsync(); 
+        }
+        catch (Exception ex)
+        {
+            Toasts.Error(ex.Message);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+}
